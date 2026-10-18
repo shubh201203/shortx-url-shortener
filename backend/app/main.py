@@ -47,11 +47,23 @@ async def lifespan(app: FastAPI):
     # Signal worker to stop
     await analytics_queue.put(None)
 
+def get_allowed_origins():
+    origins = set()
+    raw = settings.FRONTEND_URL.strip() if settings.FRONTEND_URL else ""
+    if raw:
+        for item in raw.split(","):
+            cleaned = item.strip().rstrip("/")
+            if cleaned:
+                origins.add(cleaned)
+    # Always include the canonical production frontend
+    origins.add("https://shortx-url-shortener.vercel.app")
+    return list(origins)
+
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origins=get_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

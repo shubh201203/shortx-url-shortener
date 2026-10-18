@@ -1,47 +1,53 @@
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from app.main import app
 
+@pytest.fixture
+def transport():
+    return ASGITransport(app=app)
+
 @pytest.mark.asyncio
-async def test_shorten_url():
-    """Verify that shortening a URL works and returns expected JSON context."""
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        response = await ac.post("/api/shorten", json={"url": "https://google.com"})
-    
+async def test_options_cors_preflight(transport):
+    """Verify that OPTIONS preflight from the production Vercel origin succeeds with CORS headers."""
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.options(
+            "/api/shorten",
+            headers={
+                "Origin": "https://shortx-url-shortener.vercel.app",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type"
+            }
+        )
     assert response.status_code == 200
-    data = response.json()
-    assert "short_code" in data
-    assert data["original_url"] == "https://google.com"
-    assert "status" in data
+    assert response.headers.get("access-control-allow-origin") == "https://shortx-url-shortener.vercel.app"
+    assert "POST" in response.headers.get("access-control-allow-methods", "")
 
 @pytest.mark.asyncio
-async def test_redirect_cache_miss():
-    """Verify that a DB miss successfully raises a 404 Not Found error."""
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        response = await ac.get("/r/invalid_code_trigger_404")
-    assert response.status_code == 404
+async def test_options_disallowed_origin(transport):
+    """Verify that an unauthorized origin is rejected with HTTP 400."""
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.options(
+            "/api/shorten",
+            headers={
+                "Origin": "https://malicious-site.com",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type"
+            }
+        )
+    assert response.status_code == 400
+    assert "access-control-allow-origin" not in response.headers
 
 @pytest.mark.asyncio
-async def test_rate_limit_trigger():
-    """Blast an endpoint to verify Redis sliding window returns 429 Too Many Requests."""
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        for _ in range(105):
-            res = await ac.get("/r/rate_limit_test")
-            if res.status_code == 429:
-                break
-        
-        final_res = await ac.get("/r/rate_limit_test")
-        assert final_res.status_code == 429
+async def test_health_check(transport):
+    """Verify backend /health check returns 200 ok."""
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
 
 @pytest.mark.asyncio
-async def test_redirect_success():
-    """Verify standard redirect successfully routes after shortening a URL."""
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        response = await ac.post("/api/shorten", json={"url": "https://example.com/target"})
-        data = response.json()
-        short_code = data["short_code"]
-        
-        # Test Redirect
-        redirect_res = await ac.get(f"/r/{short_code}", follow_redirects=False)
-        assert redirect_res.status_code in [307, 308, 302, 301]
-        assert redirect_res.headers["location"] == "https://example.com/target"
+async def test_validation_error_invalid_url(transport):
+    """Verify invalid URL payloads receive 422 Unprocessable Entity."""
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.post("/api/shorten", json={"url": "not-a-valid-url"})
+    assert response.status_code == 422

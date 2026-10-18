@@ -12,7 +12,7 @@ export default function Home() {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
 
   const handleCopy = () => {
     if (!result) return;
