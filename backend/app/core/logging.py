@@ -13,6 +13,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger("shortx")
 
+async def safe_incr(key: str):
+    try:
+        await redis_client.incr(key)
+    except Exception as e:
+        logger.debug(f"Redis incr {key} failed: {e}")
+
 class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         start_time = time.time()
@@ -28,17 +34,17 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         if path.startswith("/r/"):
             logger.info(f"{request.method} {path} | status={response.status_code} | latency={process_time:.2f}ms | cache={cache_status}")
             
-            # Fire and forget Redis metric counters (observability gold without slowing down redirects)
-            asyncio.create_task(redis_client.incr("metrics:total_redirects"))
+            # Fire and forget Redis metric counters safely
+            asyncio.create_task(safe_incr("metrics:total_redirects"))
             if cache_status == "HIT":
-                asyncio.create_task(redis_client.incr("metrics:cache_hits"))
+                asyncio.create_task(safe_incr("metrics:cache_hits"))
             else:
-                asyncio.create_task(redis_client.incr("metrics:cache_misses"))
+                asyncio.create_task(safe_incr("metrics:cache_misses"))
         else:
             if path != "/health":
                 logger.info(f"{request.method} {path} | status={response.status_code} | latency={process_time:.2f}ms")
             
             if response.status_code == 429:
-                asyncio.create_task(redis_client.incr("metrics:rate_limited"))
+                asyncio.create_task(safe_incr("metrics:rate_limited"))
                 
         return response

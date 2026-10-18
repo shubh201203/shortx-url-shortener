@@ -8,6 +8,7 @@ from ..core.database import db
 from ..core.redis import redis_client
 from ..worker.analytics import analytics_queue
 from ..core.rate_limiter import sliding_window_rate_limit
+from ..core.logging import logger
 
 router = APIRouter()
 
@@ -47,8 +48,12 @@ async def create_short_url(payload: URLCreate, request: Request):
 async def redirect_url(code: str, request: Request):
     """Ultra fast redirect service using cache-aside pattern."""
     
-    # 1. Check Cache
-    cached_url = await redis_client.get(f"url:{code}")
+    # 1. Check Cache (with fallback on Redis failure)
+    cached_url = None
+    try:
+        cached_url = await redis_client.get(f"url:{code}")
+    except Exception as e:
+        logger.warning(f"Redis cache get failed: {e}")
     
     url = cached_url
     if not url:
@@ -58,8 +63,11 @@ async def redirect_url(code: str, request: Request):
             raise HTTPException(status_code=404, detail="URL not found")
         
         url = url_doc["original_url"]
-        # 3. Update Cache (TTL 24 hours)
-        await redis_client.setex(f"url:{code}", 86400, url)
+        # 3. Update Cache (TTL 24 hours, best-effort)
+        try:
+            await redis_client.setex(f"url:{code}", 86400, url)
+        except Exception as e:
+            logger.warning(f"Redis cache setex failed: {e}")
     else:
         # Signal custom logging state for middleware
         request.state.cache_hit = True
@@ -154,16 +162,25 @@ async def get_analytics(code: str):
 @router.get("/api/metrics")
 async def system_metrics():
     """System health metrics parsed directly from fast Redis counters."""
-    pipe = redis_client.pipeline()
-    pipe.get("metrics:total_redirects")
-    pipe.get("metrics:cache_hits")
-    pipe.get("metrics:cache_misses")
-    pipe.get("metrics:rate_limited")
-    results = await pipe.execute()
-    
-    return {
-        "total_redirects": int(results[0]) if results[0] else 0,
-        "cache_hits": int(results[1]) if results[1] else 0,
-        "cache_misses": int(results[2]) if results[2] else 0,
-        "rate_limited": int(results[3]) if results[3] else 0
-    }
+    try:
+        pipe = redis_client.pipeline()
+        pipe.get("metrics:total_redirects")
+        pipe.get("metrics:cache_hits")
+        pipe.get("metrics:cache_misses")
+        pipe.get("metrics:rate_limited")
+        results = await pipe.execute()
+        
+        return {
+            "total_redirects": int(results[0]) if results[0] else 0,
+            "cache_hits": int(results[1]) if results[1] else 0,
+            "cache_misses": int(results[2]) if results[2] else 0,
+            "rate_limited": int(results[3]) if results[3] else 0
+        }
+    except Exception as e:
+        logger.warning(f"Failed to fetch Redis metrics: {e}")
+        return {
+            "total_redirects": 0,
+            "cache_hits": 0,
+            "cache_misses": 0,
+            "rate_limited": 0
+        }
