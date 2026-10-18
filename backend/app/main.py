@@ -47,6 +47,9 @@ async def lifespan(app: FastAPI):
     # Signal worker to stop
     await analytics_queue.put(None)
 
+# Secure regex strictly scoped to this project's Vercel preview deployments (*-shubh201203s-projects.vercel.app)
+VERCEL_PREVIEW_ORIGIN_REGEX = r"^https:\/\/shortx-url-shortener(-[a-zA-Z0-9_-]+)?-shubh201203s-projects\.vercel\.app$"
+
 def get_allowed_origins():
     origins = set()
     raw = settings.FRONTEND_URL.strip() if settings.FRONTEND_URL else ""
@@ -64,6 +67,7 @@ app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_allowed_origins(),
+    allow_origin_regex=VERCEL_PREVIEW_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
