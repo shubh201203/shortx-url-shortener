@@ -1,6 +1,6 @@
 # ShortX ⚡️ URLs without the wait
 
-*Engineered with ⚡️ by **THAKURVEER***
+*Engineered with ⚡️ by **SHUBH***
 
 ShortX is a modular monolith, high-performance URL shortener built for speed, scale, and intelligence. It delivers robust, free-tier friendly analytics natively via Async workers, caching layers, and predictive text classification—capable of providing sustained **<50ms redirect latency**.
 

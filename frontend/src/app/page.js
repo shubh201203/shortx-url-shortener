@@ -110,7 +110,7 @@ export default function Home() {
       </div>
 
       <footer style={{ marginTop: 'auto', padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-        <p>Engineered with ⚡️ by <strong>THAKURVEER</strong></p>
+        <p>Engineered with ⚡️ by <strong>SHUBH</strong></p>
       </footer>
     </main>
   );
