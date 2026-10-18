@@ -18,8 +18,8 @@ Designed to maximize throughput and minimize latency on modern cloud infrastruct
 
 | Service | Target URL | Description |
 |---|---|---|
-| **Production Frontend** | [https://shortx-url-shortener.vercel.app](https://shortx-url-shortener.vercel.app) | Next.js 14 Web Application |
-| **Global Analytics Dashboard** | [https://shortx-url-shortener.vercel.app/dashboard](https://shortx-url-shortener.vercel.app/dashboard) | 7-day activity chart & top links |
+| **Production Frontend** | [https://shortx-url-shortener-1w5piewh6-shubh201203s-projects.vercel.app](https://shortx-url-shortener-1w5piewh6-shubh201203s-projects.vercel.app/) | Next.js 14 Web Application |
+| **Global Analytics Dashboard** | [https://shortx-url-shortener-1w5piewh6-shubh201203s-projects.vercel.app/dashboard](https://shortx-url-shortener-1w5piewh6-shubh201203s-projects.vercel.app/dashboard) | 7-day activity chart & top links |
 | **Backend REST API** | [https://shortx-url-shortener-8oz8.onrender.com](https://shortx-url-shortener-8oz8.onrender.com) | FastAPI on Render |
 | **Health Check Endpoint** | [https://shortx-url-shortener-8oz8.onrender.com/health](https://shortx-url-shortener-8oz8.onrender.com/health) | Uptime status probe |
 | **GitHub Repository** | [https://github.com/shubh201203/shortx-url-shortener](https://github.com/shubh201203/shortx-url-shortener) | Source code & configuration |
@@ -47,14 +47,14 @@ High-volume URL shorteners handle read-heavy workloads where redirect latency di
 
 ```mermaid
 flowchart TD
-    Client(["Client Browser"])
-    Vercel["Next.js 14 Frontend\n(Vercel)"]
-    FastAPI["FastAPI Async API\n(Render)"]
-    Redis[("Upstash Redis\n(K-V Cache + ZSET Limiter)")]
-    MongoDB[("MongoDB Atlas\n(urls, raw_clicks, analytics)")]
-    Queue[["asyncio.Queue\n(In-Memory Telemetry Buffer)")]
+    Client["Client Browser"]
+    Vercel["Next.js 14 Frontend - Vercel"]
+    FastAPI["FastAPI Async API - Render"]
+    Redis["Upstash Redis - Cache and Rate Limiter"]
+    MongoDB["MongoDB Atlas - Database Storage"]
+    Queue["asyncio.Queue - In-Memory Telemetry Buffer"]
     Worker["Background Async Worker"]
-    ML["Scikit-Learn ML Model\n(Naive Bayes + TF-IDF)"]
+    ML["Scikit-Learn ML Model - Naive Bayes"]
 
     %% Shortening Flow
     Client -->|"1. POST /api/shorten {url}"| FastAPI

@@ -24,20 +24,23 @@ async def test_options_cors_canonical_origin(transport):
 
 @pytest.mark.asyncio
 async def test_options_cors_preview_origin(transport):
-    """Verify that OPTIONS preflight from the exact user Vercel Preview origin succeeds."""
-    preview_origin = "https://shortx-url-shortener-erd4ffgd1-shubh201203s-projects.vercel.app"
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.options(
-            "/api/shorten",
-            headers={
-                "Origin": preview_origin,
-                "Access-Control-Request-Method": "POST",
-                "Access-Control-Request-Headers": "content-type"
-            }
-        )
-    assert response.status_code == 200
-    assert response.headers.get("access-control-allow-origin") == preview_origin
-    assert "POST" in response.headers.get("access-control-allow-methods", "")
+    """Verify that OPTIONS preflight from the exact user Vercel Preview origins succeed."""
+    for preview_origin in [
+        "https://shortx-url-shortener-1w5piewh6-shubh201203s-projects.vercel.app",
+        "https://shortx-url-shortener-erd4ffgd1-shubh201203s-projects.vercel.app"
+    ]:
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            response = await ac.options(
+                "/api/shorten",
+                headers={
+                    "Origin": preview_origin,
+                    "Access-Control-Request-Method": "POST",
+                    "Access-Control-Request-Headers": "content-type"
+                }
+            )
+        assert response.status_code == 200
+        assert response.headers.get("access-control-allow-origin") == preview_origin
+        assert "POST" in response.headers.get("access-control-allow-methods", "")
 
 @pytest.mark.asyncio
 async def test_options_disallowed_origin(transport):
